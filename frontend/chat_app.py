@@ -1,4 +1,5 @@
 import streamlit as st
+from api_client import ask_rag
 
 st.set_page_config(
     page_title="ATA RAG Assistant",
@@ -517,25 +518,31 @@ for message in st.session_state.messages:
         st.write(message["content"])
 
         if message.get("source_url"):
-            st.markdown(
-                f'<span class="demo-badge">{text["demo"]}</span>',
-                unsafe_allow_html=True
-            )
+                if message.get("is_demo", False):
+                    st.markdown(
+                        f'<span class="demo-badge">{text["demo"]}</span>',
+                        unsafe_allow_html=True
+                    )
 
-            st.markdown(
-                f"""
-                <div class="source-card">
-                    <div>
-                        <span class="source-dot"></span>
-                        <strong>{text["source"]}:</strong> akademiata.pl
+                source_label = message.get(
+                    "source_label",
+                    "akademiata.pl"
+                )
+
+                st.markdown(
+                    f"""
+                    <div class="source-card">
+                        <div>
+                            <span class="source-dot"></span>
+                            <strong>{text["source"]}:</strong> {source_label}
+                        </div>
+                        <a href="{message["source_url"]}" target="_blank">
+                            {text["open_source"]}
+                        </a>
                     </div>
-                    <a href="{message["source_url"]}" target="_blank">
-                        {text["open_source"]}
-                    </a>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                    """,
+                    unsafe_allow_html=True
+                )
 
 selected_question = None
 
@@ -560,20 +567,41 @@ typed_question = st.chat_input(text["placeholder"])
 question = typed_question or selected_question
 
 if question and question.strip():
+    clean_question = question.strip()
+
     st.session_state.messages.append(
         {
             "role": "user",
-            "content": question.strip(),
+            "content": clean_question,
             "source_url": None
         }
     )
 
-    st.session_state.messages.append(
-        {
+    api_result = ask_rag(clean_question, language)
+
+    if api_result["success"]:
+        sources = api_result["sources"]
+        first_source = sources[0] if sources else {}
+
+        assistant_message = {
+            "role": "assistant",
+            "content": api_result["answer"],
+            "source_url": first_source.get("url"),
+            "source_label": first_source.get(
+                "title",
+                text["source"]
+            ),
+            "is_demo": False
+        }
+
+    else:
+        assistant_message = {
             "role": "assistant",
             "content": text["demo_reply"],
-            "source_url": "https://akademiata.pl"
+            "source_url": "https://akademiata.pl",
+            "source_label": "akademiata.pl",
+            "is_demo": True
         }
-    )
 
+    st.session_state.messages.append(assistant_message)
     st.rerun()
