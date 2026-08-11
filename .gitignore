@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ATA RAG scraper - generated data, not source code
+scraper/pages.json
+scraper/pdfs.json
+scraper/output/
