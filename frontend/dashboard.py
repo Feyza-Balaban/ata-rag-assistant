@@ -50,6 +50,17 @@ st.markdown(
             border-radius: 12px;
         }
 
+        [data-testid="stSidebar"] [data-testid="stSelectbox"] * {
+            color: #172033 !important;
+            -webkit-text-fill-color: #172033 !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stSelectbox"] label,
+        [data-testid="stSidebar"] [data-testid="stSelectbox"] label * {
+            color: #f8fafc !important;
+            -webkit-text-fill-color: #f8fafc !important;
+        }
+
         .main .block-container {
             max-width: 1250px;
             padding-top: 2rem;
