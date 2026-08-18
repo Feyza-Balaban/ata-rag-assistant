@@ -1,0 +1,2 @@
+"""ATA RAG backend package."""
+

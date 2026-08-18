@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ATA_CHUNKS_PATH: /app/scraper/output/chunks.jsonl
+      ATA_BACKEND_API_KEY: ${ATA_BACKEND_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+    volumes:
+      - ./scraper/output:/app/scraper/output:ro
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      ATA_RAG_API_URL: http://backend:8000/ask
+      ATA_RAG_METRICS_URL: http://backend:8000/metrics
+      ATA_RAG_API_KEY: ${ATA_BACKEND_API_KEY:-}
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+
