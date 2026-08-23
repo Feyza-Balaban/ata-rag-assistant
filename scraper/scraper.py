@@ -2,7 +2,7 @@ import json
 import time
 import re
 import urllib.robotparser as robotparser
-from collections import deque
+from collections import Counter, deque
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -11,7 +11,8 @@ from bs4 import BeautifulSoup
 from cleaner import clean_html_to_markdown
 from dynamic_scraper import get_dynamic_content
 from config import (
-    START_URLS,
+    LANGUAGE_START_URLS,
+    MAX_PAGES_PER_LANGUAGE,
     ALLOWED_DOMAINS,
     EXCLUDED_PATHS,
     CRAWL_DELAY_SECONDS,
@@ -62,18 +63,29 @@ def detect_language(url):
 
 
 def load_robot_parsers(domains):
-    """Load robots.txt once per domain instead of re-fetching it every time."""
+    """
+    Load robots.txt once per domain instead of re-fetching it every time.
+    Uses requests (with an explicit timeout) instead of
+    RobotFileParser.read(), because read() has no timeout and can hang
+    indefinitely on a slow/unstable connection.
+    """
     parsers = {}
     for domain in domains:
         rp = robotparser.RobotFileParser()
-        rp.set_url(f"https://{domain}/robots.txt")
         try:
-            rp.read()
+            response = requests.get(
+                f"https://{domain}/robots.txt",
+                timeout=10,
+                headers={"User-Agent": USER_AGENT},
+            )
+            if response.status_code == 200:
+                rp.parse(response.text.splitlines())
+            else:
+                rp = None
         except Exception:
             rp = None
         parsers[domain] = rp
     return parsers
-
 
 def is_allowed_by_robots(url, robot_parsers):
     domain = urlparse(url).netloc.lower()
@@ -141,10 +153,6 @@ def crawl_site(start_urls, max_pages=50):
                             current_url
                         )
                     except Exception as second_error:
-                        # Pricing widget never produced a real price
-                        # (likely genuinely unset for this program).
-                        # Fall back to the static page so we don't
-                        # lose the page's other content entirely.
                         print(
                             "  -> Second attempt also failed, "
                             "falling back to static HTML:",
@@ -246,7 +254,6 @@ def crawl_site(start_urls, max_pages=50):
                 "markdown": markdown,
             })
 
-        # Discover more links on this page and queue the in-scope ones.
         for tag in soup.find_all(
             "a",
             href=True,
@@ -268,8 +275,6 @@ def crawl_site(start_urls, max_pages=50):
             if domain not in ALLOWED_DOMAINS:
                 continue
 
-            # Collect PDF links separately instead of trying to crawl
-            # them as HTML pages; PDF text extraction is a separate step.
             if parsed_url.path.lower().endswith(".pdf"):
                 pdf_urls.add(absolute_url.split("#")[0])
                 continue
@@ -288,10 +293,28 @@ def crawl_site(start_urls, max_pages=50):
                 queue.append(clean_url)
                 queued.add(clean_url)
 
-        # Politeness delay between requests.
         time.sleep(CRAWL_DELAY_SECONDS)
 
     return pages, sorted(pdf_urls), errors
+
+
+def merge_crawl_results(results):
+    """
+    results: list of (pages, pdf_urls, errors) tuples, one per language
+    crawl. Merges them into a single deduplicated set - a url visited by
+    more than one language crawl (this happens, since cross-language
+    links exist e.g. an EN page linking to an untranslated PL page) is
+    only kept once.
+    """
+    pages_by_url = {}
+    pdf_urls = set()
+    errors = []
+    for pages, pdfs, errs in results:
+        for page in pages:
+            pages_by_url[page["url"]] = page
+        pdf_urls.update(pdfs)
+        errors.extend(errs)
+    return list(pages_by_url.values()), sorted(pdf_urls), errors
 
 
 def save_pages(pages):
@@ -356,17 +379,34 @@ def save_errors(errors):
 
 
 if __name__ == "__main__":
-    print("Starting ATA crawler...")
-    print("Start websites:")
-    for url in START_URLS:
-        print(" -", url)
+    print("Starting ATA crawler (per-language)...")
 
-    pages, pdf_urls, errors = crawl_site(
-        START_URLS,
-        max_pages=200,
+    results = []
+    for lang, start_urls in LANGUAGE_START_URLS.items():
+        print(f"\n=== Crawling language: {lang} ===")
+        for url in start_urls:
+            print(" -", url)
+
+        pages, pdf_urls, errors = crawl_site(
+            start_urls,
+            max_pages=MAX_PAGES_PER_LANGUAGE,
+        )
+        print(
+            f"[{lang}] {len(pages)} pages, "
+            f"{len(pdf_urls)} pdfs, "
+            f"{len(errors)} errors"
+        )
+        results.append((pages, pdf_urls, errors))
+
+    all_pages, all_pdf_urls, all_errors = merge_crawl_results(results)
+
+    save_pages(all_pages)
+    save_pdfs(all_pdf_urls)
+    save_errors(all_errors)
+
+    lang_counts = Counter(
+        detect_language(p["url"]) for p in all_pages
     )
-    save_pages(pages)
-    save_pdfs(pdf_urls)
-    save_errors(errors)
-
     print("\nCrawler finished.")
+    print(f"Total pages: {len(all_pages)}")
+    print(f"Pages per language: {dict(lang_counts)}")

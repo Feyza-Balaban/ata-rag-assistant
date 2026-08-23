@@ -2,11 +2,21 @@
 ATA RAG Scraper - central configuration
 """
 
-START_URLS = [
-    "https://akademiata.pl/",
-    "https://uczelnia.akademiata.pl/",
-    "https://akademiata.pl/oferta/studia-1-stopnia/informatyka/",
-]
+# Each language is crawled separately, with its own budget, so that a
+# single BFS crawl dominated by Polish pages doesn't starve the other
+# languages of their max_pages allowance.
+LANGUAGE_START_URLS = {
+    "pl": [
+        "https://akademiata.pl/",
+        "https://uczelnia.akademiata.pl/",
+        "https://akademiata.pl/oferta/studia-1-stopnia/informatyka/",
+    ],
+    "en": ["https://akademiata.pl/en/"],
+    "uk": ["https://akademiata.pl/uk/"],
+    "ru": ["https://akademiata.pl/ru/"],
+}
+
+MAX_PAGES_PER_LANGUAGE = 150
 
 ALLOWED_DOMAINS = [
     "akademiata.pl",
@@ -28,8 +38,8 @@ USER_AGENT = "Mozilla/5.0 ATA-RAG-Scraper/1.0"
 
 # URL path patterns that require JavaScript rendering (Playwright) because
 # the tuition/pricing widget on these pages loads its data client-side.
-# See scraper/debug/compare_dynamic.py and poll_probe.py for how these
-# were determined.
+# Covers all 4 languages - the original version only covered pl/en and
+# silently missed uk/ru pricing data.
 DYNAMIC_PATTERNS = [
     r"^/oferta/studia-1-stopnia/[^/]+/$",
     r"^/oferta/studia-2-stopnia/[^/]+/$",
@@ -38,4 +48,11 @@ DYNAMIC_PATTERNS = [
     r"^/kalkulator-czesnego/$",
     r"^/en/offer/bachelor/[^/]+/$",
     r"^/en/offer/master/[^/]+/$",
+    r"^/en/tuition-calculator/$",
+    r"^/uk/propozyciya/bakalavrat/[^/]+/$",
+    r"^/uk/propozyciya/mahistratura/[^/]+/$",
+    r"^/uk/kalkulator-czesnego/$",
+    r"^/ru/predlozhenie/bakalavriat/[^/]+/$",
+    r"^/ru/predlozhenie/magistratura/[^/]+/$",
+    r"^/ru/kalkulator-czesnego/$",
 ]
