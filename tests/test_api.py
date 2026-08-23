@@ -33,7 +33,8 @@ def test_health_and_ask_contract() -> None:
     )
 
     assert health_response.status_code == 200
-    assert health_response.json()["indexed_chunks"] == 3
+    assert health_response.json()["indexed_chunks"] == 5
+    assert health_response.json()["retrieval_mode"] == "bm25"
     assert ask_response.status_code == 200
     assert ask_response.json()["sources"][0]["url"].endswith("/en/tuition")
 
@@ -53,4 +54,3 @@ def test_optional_api_key_is_enforced() -> None:
 
     assert unauthorized.status_code == 401
     assert authorized.status_code == 200
-

@@ -16,6 +16,12 @@ NOT_FOUND_MESSAGES = {
     "türkçe": "Bu bilgiyi indekslenen ATA Üniversitesi kaynaklarında bulamadım.",
     "turkish": "Bu bilgiyi indekslenen ATA Üniversitesi kaynaklarında bulamadım.",
     "tr": "Bu bilgiyi indekslenen ATA Üniversitesi kaynaklarında bulamadım.",
+    "українська": "Не вдалося знайти цю інформацію в проіндексованих джерелах ATA.",
+    "ukrainian": "Не вдалося знайти цю інформацію в проіндексованих джерелах ATA.",
+    "uk": "Не вдалося знайти цю інформацію в проіндексованих джерелах ATA.",
+    "русский": "Не удалось найти эту информацию в проиндексированных источниках ATA.",
+    "russian": "Не удалось найти эту информацию в проиндексированных источниках ATA.",
+    "ru": "Не удалось найти эту информацию в проиндексированных источниках ATA.",
 }
 
 
@@ -119,4 +125,3 @@ class OpenAIAnswerGenerator:
         )
         answer = response.output_text.strip()
         return answer or not_found_message(language)
-

@@ -5,11 +5,12 @@ Multilingual, source-grounded assistant for ATA University.
 ## Current project status
 
 - Website scraper, cleaning, heading-based chunking, metadata: ready
-- Streamlit chat in English, Turkish, and Polish: ready
+- Streamlit chat in English, Polish, Ukrainian, and Russian: ready
 - FastAPI `/ask`, `/health`, and `/metrics` endpoints: ready
-- Local multilingual retrieval and confidence threshold: ready
+- Hybrid pgvector + BM25 retrieval and confidence threshold: ready
 - Optional OpenAI grounded answer generation: ready
-- Real scraper output integration, persistent vector database, and deployment: next
+- Real 8,202-chunk scraper output integration: ready
+- Production deployment: next
 
 ## Team responsibilities
 
@@ -43,7 +44,7 @@ API documentation will be available at `http://127.0.0.1:8000/docs`.
 
 The frontend was developed with Streamlit and includes:
 
-- Multilingual support: English, Turkish, and Polish
+- Multilingual support: English, Polish, Ukrainian, and Russian
 - RAG chat interface
 - Source link display
 - Demo fallback when the backend is unavailable
@@ -102,7 +103,21 @@ The response includes `answer`, clickable `sources`, `confidence`,
 
 ## Docker Compose
 
-After generating `scraper/output/chunks.jsonl`:
+After generating `scraper/output/chunks.jsonl`, start PostgreSQL:
+
+```powershell
+docker compose up -d postgres
+```
+
+Set `OPENAI_API_KEY`, then create the vector index:
+
+```powershell
+$env:ATA_VECTOR_DATABASE_URL = "postgresql://ata:ata@localhost:5432/ata_rag"
+$env:OPENAI_API_KEY = "YOUR_KEY"
+.\.venv\Scripts\python.exe -m backend.index_vectors --rebuild
+```
+
+Start the complete application:
 
 ```powershell
 docker compose up --build
@@ -110,3 +125,8 @@ docker compose up --build
 
 The frontend runs on `http://127.0.0.1:8501` and the API runs on
 `http://127.0.0.1:8000`.
+
+When both `ATA_VECTOR_DATABASE_URL` and `OPENAI_API_KEY` are configured,
+retrieval uses pgvector semantic search fused with BM25. If either is absent
+or the vector service is temporarily unavailable, the API safely falls back
+to local BM25 retrieval.

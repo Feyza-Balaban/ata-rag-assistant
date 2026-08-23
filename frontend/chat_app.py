@@ -39,33 +39,32 @@ TEXTS = {
         "grounded": "Source-grounded",
         "demo": "Demo response"
     },
-    "Türkçe": {
-        "title": "ATA Üniversitesi Asistanınız",
+    "Українська": {
+        "title": "Ваш асистент Університету ATA",
         "subtitle": (
-            "ATA Üniversitesi hakkında sorular sorun ve "
-            "kaynaklara dayalı net yanıtlar alın."
+            "Ставте запитання про Університет ATA та отримуйте "
+            "чіткі відповіді з посиланнями на джерела."
         ),
         "welcome": (
-            "Merhaba! 👋 Ben ATA Üniversitesi Asistanıyım. "
-            "Bugün ne öğrenmek istersiniz?"
+            "Вітаю! 👋 Я асистент Університету ATA. "
+            "Що ви хотіли б дізнатися сьогодні?"
         ),
-        "placeholder": "ATA Üniversitesi hakkında bir soru sorun...",
-        "try_asking": "Bu sorulardan birini deneyebilirsiniz",
+        "placeholder": "Поставте запитання про Університет ATA...",
+        "try_asking": "Спробуйте поставити одне з цих запитань",
         "suggestions": [
-            "Kabul şartları nelerdir?",
-            "ATA Üniversitesi nerede bulunuyor?",
-            "Üniversiteyle nasıl iletişim kurabilirim?"
+            "Які вимоги до вступу?",
+            "Де розташований Університет ATA?",
+            "Як зв’язатися з університетом?"
         ],
         "demo_reply": (
-            "Sorunuzu başarıyla aldım. RAG backend sistemi entegrasyon "
-            "aşamasında bağlanacak. Bu demo, kaynaklı cevabın ekranda "
-            "nasıl görüneceğini göstermektedir."
+            "Сервіс відповідей зараз недоступний. Спробуйте ще раз "
+            "після відновлення з’єднання з RAG backend."
         ),
-        "source": "Doğrulanmış kaynak",
-        "open_source": "Kaynağı aç ↗",
-        "clear": "Konuşmayı temizle",
-        "grounded": "Kaynak destekli",
-        "demo": "Demo cevap"
+        "source": "Перевірене джерело",
+        "open_source": "Відкрити джерело ↗",
+        "clear": "Очистити розмову",
+        "grounded": "На основі джерел",
+        "demo": "Демонстраційна відповідь"
     },
     "Polski": {
         "title": "Twój Asystent Uniwersytetu ATA",
@@ -94,6 +93,33 @@ TEXTS = {
         "clear": "Wyczyść rozmowę",
         "grounded": "Oparte na źródłach",
         "demo": "Odpowiedź demonstracyjna"
+    },
+    "Русский": {
+        "title": "Ваш ассистент Университета ATA",
+        "subtitle": (
+            "Задавайте вопросы об Университете ATA и получайте "
+            "точные ответы со ссылками на источники."
+        ),
+        "welcome": (
+            "Здравствуйте! 👋 Я ассистент Университета ATA. "
+            "Что вы хотели бы узнать сегодня?"
+        ),
+        "placeholder": "Задайте вопрос об Университете ATA...",
+        "try_asking": "Попробуйте задать один из этих вопросов",
+        "suggestions": [
+            "Каковы требования для поступления?",
+            "Где находится Университет ATA?",
+            "Как связаться с университетом?"
+        ],
+        "demo_reply": (
+            "Сервис ответов сейчас недоступен. Повторите попытку после "
+            "восстановления соединения с RAG backend."
+        ),
+        "source": "Проверенный источник",
+        "open_source": "Открыть источник ↗",
+        "clear": "Очистить диалог",
+        "grounded": "На основе источников",
+        "demo": "Демонстрационный ответ"
     }
 }
 
@@ -439,14 +465,14 @@ with st.sidebar:
                 <div class="side-subtitle">University Knowledge Hub</div>
             </div>
         </div>
-        <p class="side-label">Language / Dil / Język</p>
+        <p class="side-label">Language / Język / Мова / Язык</p>
         """,
         unsafe_allow_html=True
     )
 
     language = st.selectbox(
         "Language",
-        ["English", "Türkçe", "Polski"],
+        ["English", "Polski", "Українська", "Русский"],
         key="language",
         label_visibility="collapsed"
     )
@@ -479,7 +505,7 @@ with st.sidebar:
                 <span class="ready">Ready</span>
             </div>
             <div class="side-row">
-                <span>3 languages</span>
+                <span>4 languages</span>
                 <span class="ready">Ready</span>
             </div>
             <div class="side-row">

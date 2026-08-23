@@ -30,6 +30,7 @@ class HealthResponse(BaseModel):
     indexed_chunks: int
     chunks_path: str
     llm_enabled: bool
+    retrieval_mode: str
 
 
 class MetricsResponse(BaseModel):
@@ -37,4 +38,3 @@ class MetricsResponse(BaseModel):
     unanswered_questions: int
     average_confidence: float
     average_latency_ms: float
-
