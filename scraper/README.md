@@ -47,18 +47,24 @@ used to report which pages are new/changed/unchanged on the next run.
 `scraper/output/errors.jsonl` — any URL that failed to fetch/parse, with the reason.
 
 ### Current run stats (last full crawl)
-- 200 pages crawled, 0 errors
-- 4140 chunks generated
-- 33 PDF URLs discovered
+- 399 pages crawled across 4 languages (pl, en, uk, ru), 0 errors
+- 8202 chunks generated
+  - pl: 151 pages / 3190 chunks
+  - en: 87 pages / 1465 chunks
+  - uk: 80 pages / 1811 chunks
+  - ru: 81 pages / 1736 chunks
+- 27 PDF URLs discovered
 
 ### Known limitations / not yet done
 - **PDF content extraction is not implemented.** We only collect PDF URLs
   (`pdfs.jsonl`); OCR/text extraction from PDFs is a separate follow-up task.
 - **`/aktualnosci/` (news) pages are excluded on purpose** — decided this
   is out of scope for the MVP chatbot's core use case (tuition/admissions/programs).
-- Crawl is currently capped at `max_pages=200` (`scraper/scraper.py`,
-  `__main__` block) — this covered the site well in testing, but if the
-  site grows, this number may need to be raised.
+- Each language is crawled separately with its own budget
+  (`MAX_PAGES_PER_LANGUAGE = 150` in `scraper/config.py`) instead of a
+  single BFS crawl, because a single crawl was getting dominated by
+  Polish pages before reaching en/uk/ru content. If a language's page
+  count grows past 150, this number may need to be raised.
 - The Dockerfile has not been build-tested locally; it should work but
   hasn't been verified end-to-end against Coolify yet.
 - Nightly re-crawl currently requires manually running `scraper.py` then
