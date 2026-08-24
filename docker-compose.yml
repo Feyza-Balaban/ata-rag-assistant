@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ata_rag
+      POSTGRES_USER: ata
+      POSTGRES_PASSWORD: ata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ata -d ata_rag"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
   backend:
     build:
       context: .
@@ -8,10 +24,18 @@ services:
       ATA_BACKEND_API_KEY: ${ATA_BACKEND_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+      ATA_VECTOR_DATABASE_URL: postgresql://ata:ata@postgres:5432/ata_rag
+      ATA_EMBEDDING_PROVIDER: ${ATA_EMBEDDING_PROVIDER:-local}
+      ATA_EMBEDDING_MODEL: ${ATA_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      ATA_EMBEDDING_DIMENSIONS: ${ATA_EMBEDDING_DIMENSIONS:-384}
+      ATA_VECTOR_SIMILARITY_THRESHOLD: ${ATA_VECTOR_SIMILARITY_THRESHOLD:-0.55}
     volumes:
       - ./scraper/output:/app/scraper/output:ro
     ports:
       - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
@@ -26,3 +50,5 @@ services:
     ports:
       - "8501:8501"
 
+volumes:
+  pgvector_data:

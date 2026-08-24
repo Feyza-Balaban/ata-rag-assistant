@@ -35,6 +35,13 @@ class Settings:
     backend_api_key: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-5.4-mini"
+    vector_database_url: str = ""
+    embedding_provider: str = "local"
+    embedding_model: str = (
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    )
+    embedding_dimensions: int = 384
+    vector_similarity_threshold: float = 0.55
     cors_origins: tuple[str, ...] = ("http://localhost:8501",)
 
     @classmethod
@@ -65,6 +72,22 @@ class Settings:
             openai_model=os.getenv(
                 "OPENAI_MODEL", "gpt-5.4-mini"
             ).strip(),
+            vector_database_url=os.getenv(
+                "ATA_VECTOR_DATABASE_URL", ""
+            ).strip(),
+            embedding_provider=os.getenv(
+                "ATA_EMBEDDING_PROVIDER", "local"
+            ).casefold().strip(),
+            embedding_model=os.getenv(
+                "ATA_EMBEDDING_MODEL",
+                "sentence-transformers/"
+                "paraphrase-multilingual-MiniLM-L12-v2",
+            ).strip(),
+            embedding_dimensions=_positive_int(
+                "ATA_EMBEDDING_DIMENSIONS", 384
+            ),
+            vector_similarity_threshold=_float_value(
+                "ATA_VECTOR_SIMILARITY_THRESHOLD", 0.55
+            ),
             cors_origins=origins,
         )
-

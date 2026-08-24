@@ -21,6 +21,12 @@ LANGUAGE_ALIASES = {
     "türkçe": "tr",
     "turkish": "tr",
     "tr": "tr",
+    "українська": "uk",
+    "ukrainian": "uk",
+    "uk": "uk",
+    "русский": "ru",
+    "russian": "ru",
+    "ru": "ru",
 }
 
 STOPWORDS = {
@@ -49,17 +55,43 @@ STOPWORDS = {
     "where",
     "w",
     "z",
+    "де",
+    "до",
+    "і",
+    "та",
+    "які",
+    "як",
+    "в",
+    "для",
+    "и",
+    "какие",
+    "как",
+    "что",
 }
 
 SYNONYM_GROUPS = (
-    {"admission", "admissions", "apply", "application", "başvuru", "kabul", "rekrutacja"},
-    {"cost", "czesne", "fee", "fees", "harç", "tuition", "ücret", "ücreti"},
-    {"address", "adres", "contact", "iletişim", "kontakt"},
-    {"dean", "dekan", "dziekanat"},
+    {
+        "admission", "admissions", "apply", "application", "başvuru",
+        "kabul", "rekrutacja", "rekrutacji", "вступ", "вступу", "прийом",
+        "поступление", "поступления", "приём",
+    },
+    {
+        "cost", "czesne", "fee", "fees", "harç", "tuition", "ücret",
+        "ücreti", "вартість", "навчання", "оплата", "обучение",
+        "стоимость",
+    },
+    {"address", "adres", "contact", "iletişim", "kontakt", "контакт", "контакти"},
+    {"dean", "dekan", "dziekanat", "декан", "деканат"},
     {"burs", "scholarship", "stypendium"},
-    {"belgeler", "documents", "dokumenty"},
-    {"calendar", "dönem", "kalendarz", "semester", "semestr", "takvim"},
-    {"bilgisayar", "computer", "informatyka", "informatics"},
+    {"belgeler", "documents", "dokumenty", "документи", "документы"},
+    {
+        "calendar", "dönem", "kalendarz", "semester", "semestr",
+        "takvim", "календар", "семестр",
+    },
+    {
+        "bilgisayar", "computer", "informatyka", "informatyce",
+        "informatyki", "informatics", "компютер", "информатика",
+    },
 )
 
 SYNONYM_LOOKUP = {
@@ -82,6 +114,11 @@ def expand_query_terms(terms: list[str]) -> list[str]:
     for term in terms:
         expanded.update(SYNONYM_LOOKUP.get(term, ()))
     return sorted(expanded)
+
+
+def normalize_language(language: str) -> str:
+    normalized = language.casefold().strip()
+    return LANGUAGE_ALIASES.get(normalized, normalized)
 
 
 @dataclass(frozen=True)
@@ -107,6 +144,7 @@ class ChunkIndex:
         self.chunks_path = chunks_path
         self.chunks: list[Chunk] = []
         self._term_frequencies: list[Counter[str]] = []
+        self._metadata_term_frequencies: list[Counter[str]] = []
         self._document_lengths: list[int] = []
         self._document_frequencies: Counter[str] = Counter()
         self._average_length = 0.0
@@ -115,6 +153,7 @@ class ChunkIndex:
     def reload(self) -> int:
         self.chunks = []
         self._term_frequencies = []
+        self._metadata_term_frequencies = []
         self._document_lengths = []
         self._document_frequencies = Counter()
 
@@ -159,9 +198,25 @@ class ChunkIndex:
                 )
                 terms = tokenize(searchable_text)
                 frequencies = Counter(terms)
+                metadata_frequencies = Counter(
+                    tokenize(
+                        " ".join(
+                            part
+                            for part in (
+                                chunk.title,
+                                chunk.section,
+                                chunk.faculty,
+                            )
+                            if part
+                        )
+                    )
+                )
 
                 self.chunks.append(chunk)
                 self._term_frequencies.append(frequencies)
+                self._metadata_term_frequencies.append(
+                    metadata_frequencies
+                )
                 self._document_lengths.append(len(terms))
                 self._document_frequencies.update(frequencies.keys())
 
@@ -183,9 +238,7 @@ class ChunkIndex:
         if not query_terms or not self.chunks:
             return []
 
-        normalized_language = LANGUAGE_ALIASES.get(
-            language.casefold().strip(), language.casefold().strip()
-        )
+        normalized_language = normalize_language(language)
         matching_language_exists = any(
             chunk.language.startswith(normalized_language)
             for chunk in self.chunks
@@ -204,6 +257,7 @@ class ChunkIndex:
                 continue
 
             frequencies = self._term_frequencies[index]
+            metadata_frequencies = self._metadata_term_frequencies[index]
             document_length = self._document_lengths[index]
             score = 0.0
 
@@ -223,6 +277,10 @@ class ChunkIndex:
                 score += inverse_document_frequency * (
                     term_frequency * (k1 + 1) / denominator
                 )
+
+                # Headings and faculty names are stronger intent signals than
+                # boilerplate body text (for example "Informatyka" vs MBA).
+                score += 1.25 * metadata_frequencies.get(term, 0)
 
             if score > 0:
                 results.append(SearchResult(chunk=chunk, score=score))

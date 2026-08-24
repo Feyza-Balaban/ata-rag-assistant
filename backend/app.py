@@ -100,6 +100,7 @@ def create_app(
             indexed_chunks=indexed_chunks,
             chunks_path=str(active_settings.chunks_path),
             llm_enabled=active_service.generator.mode == "openai-responses",
+            retrieval_mode=active_service.retrieval_mode,
         )
 
     @app.get("/metrics", response_model=MetricsResponse)
@@ -150,4 +151,3 @@ def create_app(
 
 
 app = create_app()
-

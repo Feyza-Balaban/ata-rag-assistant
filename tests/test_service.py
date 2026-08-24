@@ -25,7 +25,7 @@ def test_service_returns_answer_and_sources() -> None:
 
     assert result.results
     assert "tuition" in result.answer.casefold()
-    assert result.mode == "local-extractive"
+    assert result.mode == "local-extractive+bm25"
 
 
 def test_service_refuses_when_context_is_missing() -> None:
@@ -34,3 +34,9 @@ def test_service_refuses_when_context_is_missing() -> None:
     assert result.results == []
     assert "could not find" in result.answer.casefold()
 
+
+def test_service_localizes_ukrainian_refusal() -> None:
+    result = build_service().answer("Яка сьогодні погода?", "Українська")
+
+    assert result.results == []
+    assert "не вдалося знайти" in result.answer.casefold()

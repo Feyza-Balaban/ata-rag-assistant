@@ -40,3 +40,15 @@ def test_multilingual_synonyms_retrieve_source_without_turkish_chunks() -> None:
 
     assert results
     assert results[0].chunk.title == "Tuition fees"
+
+
+def test_ukrainian_and_russian_language_aliases() -> None:
+    index = ChunkIndex(FIXTURE_PATH)
+
+    ukrainian = index.search("Які правила вступу?", "Українська", top_k=3)
+    russian = index.search("Какие правила поступления?", "Русский", top_k=3)
+
+    assert ukrainian[0].chunk.language == "uk"
+    assert ukrainian[0].chunk.url.startswith("https://akademiata.pl/uk/")
+    assert russian[0].chunk.language == "ru"
+    assert russian[0].chunk.url.startswith("https://akademiata.pl/ru/")
