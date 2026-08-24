@@ -13,7 +13,7 @@ services:
     volumes:
       - pgvector_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   backend:
     build:
@@ -25,9 +25,10 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
       ATA_VECTOR_DATABASE_URL: postgresql://ata:ata@postgres:5432/ata_rag
-      ATA_EMBEDDING_MODEL: ${ATA_EMBEDDING_MODEL:-text-embedding-3-small}
-      ATA_EMBEDDING_DIMENSIONS: ${ATA_EMBEDDING_DIMENSIONS:-1536}
-      ATA_VECTOR_SIMILARITY_THRESHOLD: ${ATA_VECTOR_SIMILARITY_THRESHOLD:-0.65}
+      ATA_EMBEDDING_PROVIDER: ${ATA_EMBEDDING_PROVIDER:-local}
+      ATA_EMBEDDING_MODEL: ${ATA_EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+      ATA_EMBEDDING_DIMENSIONS: ${ATA_EMBEDDING_DIMENSIONS:-384}
+      ATA_VECTOR_SIMILARITY_THRESHOLD: ${ATA_VECTOR_SIMILARITY_THRESHOLD:-0.55}
     volumes:
       - ./scraper/output:/app/scraper/output:ro
     ports:

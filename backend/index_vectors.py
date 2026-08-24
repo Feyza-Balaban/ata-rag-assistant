@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from backend.config import Settings
-from backend.vector_retrieval import OpenAIEmbeddingProvider
+from backend.vector_retrieval import build_embedding_provider
 
 
 def load_records(chunks_path: Path) -> Iterator[dict[str, Any]]:
@@ -30,11 +30,8 @@ def load_records(chunks_path: Path) -> Iterator[dict[str, Any]]:
 
 
 def chunk_hash(record: dict[str, Any]) -> str:
-    supplied_hash = str(record.get("content_hash", "")).strip()
-    if supplied_hash:
-        return supplied_hash
     stable_content = "\n".join(
-        str(record.get(key, ""))
+        str(record.get(key, "")).strip()
         for key in ("url", "title", "section", "language", "text")
     )
     return hashlib.sha256(stable_content.encode("utf-8")).hexdigest()
@@ -68,8 +65,6 @@ def index_chunks(
 ) -> int:
     if not settings.vector_database_url:
         raise RuntimeError("ATA_VECTOR_DATABASE_URL is required.")
-    if not settings.openai_api_key:
-        raise RuntimeError("OPENAI_API_KEY is required for embeddings.")
     if not settings.chunks_path.exists():
         raise FileNotFoundError(settings.chunks_path)
 
@@ -78,10 +73,11 @@ def index_chunks(
     from psycopg.types.json import Jsonb
 
     records = list(load_records(settings.chunks_path))
-    provider = OpenAIEmbeddingProvider(
-        api_key=settings.openai_api_key,
+    provider = build_embedding_provider(
+        provider=settings.embedding_provider,
         model=settings.embedding_model,
         dimensions=settings.embedding_dimensions,
+        openai_api_key=settings.openai_api_key,
     )
 
     with psycopg.connect(settings.vector_database_url) as connection:
@@ -144,26 +140,27 @@ def index_chunks(
                     )
                 )
 
-            connection.executemany(
-                """
-                INSERT INTO ata_chunks (
-                    content_hash, url, title, section, faculty,
-                    language, text, metadata, embedding
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO ata_chunks (
+                        content_hash, url, title, section, faculty,
+                        language, text, metadata, embedding
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (content_hash) DO UPDATE SET
+                        url = EXCLUDED.url,
+                        title = EXCLUDED.title,
+                        section = EXCLUDED.section,
+                        faculty = EXCLUDED.faculty,
+                        language = EXCLUDED.language,
+                        text = EXCLUDED.text,
+                        metadata = EXCLUDED.metadata,
+                        embedding = EXCLUDED.embedding,
+                        updated_at = NOW()
+                    """,
+                    rows,
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (content_hash) DO UPDATE SET
-                    url = EXCLUDED.url,
-                    title = EXCLUDED.title,
-                    section = EXCLUDED.section,
-                    faculty = EXCLUDED.faculty,
-                    language = EXCLUDED.language,
-                    text = EXCLUDED.text,
-                    metadata = EXCLUDED.metadata,
-                    embedding = EXCLUDED.embedding,
-                    updated_at = NOW()
-                """,
-                rows,
-            )
             connection.commit()
             indexed += len(rows)
             print(f"Indexed {indexed}/{len(records)} chunks")

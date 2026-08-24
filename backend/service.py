@@ -13,9 +13,9 @@ from backend.llm import (
 )
 from backend.retrieval import ChunkIndex, SearchResult, score_to_confidence
 from backend.vector_retrieval import (
-    OpenAIEmbeddingProvider,
     PgVectorIndex,
     VectorIndex,
+    build_embedding_provider,
     fuse_results,
 )
 
@@ -58,16 +58,14 @@ class RAGService:
         return ExtractiveAnswerGenerator()
 
     def _build_vector_index(self) -> VectorIndex | None:
-        if not (
-            self.settings.vector_database_url
-            and self.settings.openai_api_key
-        ):
+        if not self.settings.vector_database_url:
             return None
 
-        provider = OpenAIEmbeddingProvider(
-            api_key=self.settings.openai_api_key,
+        provider = build_embedding_provider(
+            provider=self.settings.embedding_provider,
             model=self.settings.embedding_model,
             dimensions=self.settings.embedding_dimensions,
+            openai_api_key=self.settings.openai_api_key,
         )
         return PgVectorIndex(
             database_url=self.settings.vector_database_url,

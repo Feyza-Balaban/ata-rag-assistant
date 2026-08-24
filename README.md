@@ -109,11 +109,13 @@ After generating `scraper/output/chunks.jsonl`, start PostgreSQL:
 docker compose up -d postgres
 ```
 
-Set `OPENAI_API_KEY`, then create the vector index:
+Create the vector index with the free local multilingual model:
 
 ```powershell
-$env:ATA_VECTOR_DATABASE_URL = "postgresql://ata:ata@localhost:5432/ata_rag"
-$env:OPENAI_API_KEY = "YOUR_KEY"
+$env:ATA_VECTOR_DATABASE_URL = "postgresql://ata:ata@127.0.0.1:5433/ata_rag"
+$env:ATA_EMBEDDING_PROVIDER = "local"
+$env:ATA_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+$env:ATA_EMBEDDING_DIMENSIONS = "384"
 .\.venv\Scripts\python.exe -m backend.index_vectors --rebuild
 ```
 
@@ -126,7 +128,7 @@ docker compose up --build
 The frontend runs on `http://127.0.0.1:8501` and the API runs on
 `http://127.0.0.1:8000`.
 
-When both `ATA_VECTOR_DATABASE_URL` and `OPENAI_API_KEY` are configured,
-retrieval uses pgvector semantic search fused with BM25. If either is absent
-or the vector service is temporarily unavailable, the API safely falls back
-to local BM25 retrieval.
+When `ATA_VECTOR_DATABASE_URL` is configured, retrieval uses local multilingual
+embeddings and pgvector semantic search fused with BM25. OpenAI embeddings can
+still be selected with `ATA_EMBEDDING_PROVIDER=openai`. If the vector service is
+unavailable, the API safely falls back to local BM25 retrieval.

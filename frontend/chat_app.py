@@ -314,7 +314,7 @@ footer {
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.15);
             font-size: 12px;
-            font-weight: 650;
+            font-weight: 550;
         }
 
         .hero-card h1 {
@@ -330,7 +330,7 @@ footer {
             margin: 14px 0 0;
             color: rgba(255, 255, 255, 0.92);
             font-size: 16px;
-            line-height: 1.65;
+            line-height: 1.55;
         }
 
         [data-testid="stChatMessage"] {
@@ -345,7 +345,7 @@ footer {
 
         [data-testid="stChatMessage"] p {
             color: #263449 !important;
-            line-height: 1.65;
+            line-height: 1.55;
         }
 
         .question-title {

@@ -38,13 +38,15 @@ extractive mode so integration and error handling can be tested safely.
 
 ## Build the vector index
 
-Start the pgvector container, configure the database URL and OpenAI key, then
-index the current scraper output:
+Start the pgvector container and use the API-key-free local multilingual model
+to index the current scraper output:
 
 ```powershell
 docker compose up -d postgres
-$env:ATA_VECTOR_DATABASE_URL = "postgresql://ata:ata@localhost:5432/ata_rag"
-$env:OPENAI_API_KEY = "YOUR_KEY"
+$env:ATA_VECTOR_DATABASE_URL = "postgresql://ata:ata@127.0.0.1:5433/ata_rag"
+$env:ATA_EMBEDDING_PROVIDER = "local"
+$env:ATA_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+$env:ATA_EMBEDDING_DIMENSIONS = "384"
 .\.venv\Scripts\python.exe -m backend.index_vectors --rebuild
 ```
 

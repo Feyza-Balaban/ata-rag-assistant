@@ -24,6 +24,14 @@ class VectorIndex(Protocol):
         ...
 
 
+class EmbeddingProvider(Protocol):
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        ...
+
+    def embed_query(self, text: str) -> list[float]:
+        ...
+
+
 class OpenAIEmbeddingProvider:
     """Creates document and query embeddings with one configured model."""
 
@@ -47,13 +55,87 @@ class OpenAIEmbeddingProvider:
         return self.embed_documents([text])[0]
 
 
+class LocalEmbeddingProvider:
+    """Lazy, API-key-free multilingual Sentence Transformers provider."""
+
+    def __init__(self, model: str, dimensions: int) -> None:
+        self.model_name = model
+        self.dimensions = dimensions
+        self._model = None
+
+    def _load_model(self):
+        if self._model is None:
+            from sentence_transformers import SentenceTransformer
+
+            model = SentenceTransformer(self.model_name)
+            if hasattr(model, "get_embedding_dimension"):
+                actual_dimensions = model.get_embedding_dimension()
+            else:
+                actual_dimensions = (
+                    model.get_sentence_embedding_dimension()
+                )
+
+            if actual_dimensions != self.dimensions:
+                raise ValueError(
+                    "ATA_EMBEDDING_DIMENSIONS does not match the local "
+                    f"model: expected {actual_dimensions}, configured "
+                    f"{self.dimensions}."
+                )
+
+            self._model = model
+
+        return self._model
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        embeddings = self._load_model().encode(
+            texts,
+            batch_size=32,
+            show_progress_bar=False,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
+        return embeddings.tolist()
+
+    def embed_query(self, text: str) -> list[float]:
+        return self.embed_documents([text])[0]
+
+
+def build_embedding_provider(
+    provider: str,
+    model: str,
+    dimensions: int,
+    openai_api_key: str = "",
+) -> EmbeddingProvider:
+    normalized_provider = provider.casefold().strip()
+
+    if normalized_provider in {"local", "sentence-transformers"}:
+        return LocalEmbeddingProvider(model, dimensions)
+
+    if normalized_provider == "openai":
+        if not openai_api_key:
+            raise RuntimeError(
+                "OPENAI_API_KEY is required when "
+                "ATA_EMBEDDING_PROVIDER=openai."
+            )
+
+        return OpenAIEmbeddingProvider(
+            api_key=openai_api_key,
+            model=model,
+            dimensions=dimensions,
+        )
+
+    raise ValueError(
+        "ATA_EMBEDDING_PROVIDER must be 'local' or 'openai'."
+    )
+
+
 class PgVectorIndex:
     """Performs cosine-similarity search over the ata_chunks table."""
 
     def __init__(
         self,
         database_url: str,
-        embedding_provider: OpenAIEmbeddingProvider,
+        embedding_provider: EmbeddingProvider,
     ) -> None:
         self.database_url = database_url
         self.embedding_provider = embedding_provider
@@ -64,10 +146,14 @@ class PgVectorIndex:
         language: str,
         top_k: int,
     ) -> VectorSearchOutcome:
+        import numpy as np
         import psycopg
         from pgvector.psycopg import register_vector
 
-        query_embedding = self.embedding_provider.embed_query(question)
+        query_embedding = np.asarray(
+            self.embedding_provider.embed_query(question),
+            dtype=np.float32,
+        )
         normalized_language = normalize_language(language)
 
         with psycopg.connect(self.database_url) as connection:
@@ -97,6 +183,7 @@ class PgVectorIndex:
 
         results = []
         similarities = []
+
         for row in rows:
             similarity = max(0.0, min(float(row[6]), 1.0))
             similarities.append(similarity)
@@ -128,7 +215,10 @@ def fuse_results(
     """Combine semantic and lexical ranks with reciprocal-rank fusion."""
 
     scores: dict[tuple[str, str, str], float] = {}
-    representatives: dict[tuple[str, str, str], SearchResult] = {}
+    representatives: dict[
+        tuple[str, str, str],
+        SearchResult,
+    ] = {}
 
     for weight, ranked_results in (
         (1.0, vector_results),
@@ -140,10 +230,17 @@ def fuse_results(
                 result.chunk.section,
                 result.chunk.text,
             )
-            scores[key] = scores.get(key, 0.0) + weight / (60 + rank)
+            scores[key] = (
+                scores.get(key, 0.0) + weight / (60 + rank)
+            )
             representatives.setdefault(key, result)
 
-    ranked_keys = sorted(scores, key=scores.get, reverse=True)[:top_k]
+    ranked_keys = sorted(
+        scores,
+        key=scores.get,
+        reverse=True,
+    )[:top_k]
+
     return [
         SearchResult(
             chunk=representatives[key].chunk,
