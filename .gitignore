@@ -220,4 +220,8 @@ __marimo__/
 # ATA RAG scraper - generated data, not source code
 scraper/pages.json
 scraper/pdfs.json
-scraper/output/
+scraper/output/*
+!scraper/output/chunks.jsonl
+
+chunks.zip
+chunks_v2.zip
