@@ -58,6 +58,29 @@ def batched(
         yield records[start : start + batch_size]
 
 
+def count_expected_chunks(chunks_path: Path) -> int:
+    """Count valid chunk records without loading any embedding model."""
+    return sum(1 for _ in load_records(chunks_path))
+
+
+def get_existing_vector_count(database_url: str) -> int | None:
+    """
+    Return the number of rows currently in ata_chunks, or None if the
+    table does not exist yet. Uses a plain psycopg connection only -
+    no embedding model is loaded for this check.
+    """
+    import psycopg
+
+    with psycopg.connect(database_url) as connection:
+        table_exists = connection.execute(
+            "SELECT to_regclass('public.ata_chunks')"
+        ).fetchone()[0]
+        if table_exists is None:
+            return None
+        row = connection.execute("SELECT COUNT(*) FROM ata_chunks").fetchone()
+        return int(row[0])
+
+
 def index_chunks(
     settings: Settings,
     batch_size: int,
@@ -191,6 +214,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Drop the existing vector table before indexing.",
     )
+    parser.add_argument(
+        "--skip-if-complete",
+        action="store_true",
+        help=(
+            "Before doing any work, compare the JSONL chunk count against "
+            "the existing ata_chunks row count. If they match, skip "
+            "indexing entirely and exit 0 without loading the embedding "
+            "model or touching the database further. Useful for restart-"
+            "safe deployments where the indexer container may be re-run."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -198,8 +232,33 @@ def main() -> None:
     args = parse_args()
     if args.batch_size < 1:
         raise SystemExit("--batch-size must be at least 1")
+
+    settings = Settings.from_env()
+
+    if args.skip_if_complete:
+        if not settings.vector_database_url:
+            raise RuntimeError("ATA_VECTOR_DATABASE_URL is required.")
+        if not settings.chunks_path.exists():
+            raise FileNotFoundError(settings.chunks_path)
+
+        expected_count = count_expected_chunks(settings.chunks_path)
+        existing_count = get_existing_vector_count(settings.vector_database_url)
+
+        if existing_count is not None and existing_count == expected_count:
+            print(
+                f"Vector index already complete: {expected_count} chunks; "
+                "skipping rebuild"
+            )
+            return
+
+        print(
+            f"Vector index incomplete or missing "
+            f"(existing={existing_count}, expected={expected_count}); "
+            "proceeding with indexing"
+        )
+
     count = index_chunks(
-        settings=Settings.from_env(),
+        settings=settings,
         batch_size=args.batch_size,
         rebuild=args.rebuild,
     )
