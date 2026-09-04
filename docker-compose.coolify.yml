@@ -19,7 +19,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: ["python", "-m", "backend.index_vectors", "--rebuild"]
+      command: ["python", "-m", "backend.index_vectors", "--rebuild", "--skip-if-complete"]
     environment:
       ATA_CHUNKS_PATH: /app/scraper/output/chunks.jsonl
       ATA_VECTOR_DATABASE_URL: postgresql://ata:${POSTGRES_PASSWORD}@postgres:5432/ata_rag
